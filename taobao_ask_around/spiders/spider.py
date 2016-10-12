@@ -22,9 +22,14 @@ class Ask(scrapy.Spider):
         '''
         item = TaobaoAskAroundItem()
         result = json.loads(response.body)
+        # 翻页标记
+        next_sign = response.meta.get('next_page')
+        # 当前response的cat_id
+        if not next_sign:
+             now_cat_id = re.findall(r'data-value=(\d+)', response.url)[0]
+        else:
+             now_cat_id = re.findall(r'cat=(\d+)', response.url)[0]
         data_list = result['mods']['nav']['data'].get('common')
-        # 请求成功即存在的cat_id
-        now_cat_id = re.findall(r'data-value=(\d+)', response.url)[0]
         # 判断类别等级，解析类别名称
         category = response.meta.get('category', {})
         if now_cat_id in cat_dic:
@@ -32,51 +37,7 @@ class Ask(scrapy.Spider):
             category_name = cat_dic[now_cat_id]
             category[category_level] = category_name
         print '==================================', category
-        # 找到下一级cat_id 
-        if data_list:
-            sub_category_list= data_list[0]['sub']
-            for sub_category_dic in sub_category_list:
-                name = sub_category_dic['text']
-                cat_id = sub_category_dic['value']
-                # 增加类别 key 递增一个
-                category[category.keys()[-1] + 1] = name
-                url = 'https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % cat_id 
-                # 爬取新cat_id首页
-                yield scrapy.Request(url, callback=self.parse,  meta={'category':category})
-
         # 解析商品数据
-        data_info_list = result['mods']['itemlist']['data']['auctions']
-        for data_info_dic in data_info_list:
-            item['goods_name'] = data_info_dic['title'] 
-            item['goods_id'] = data_info_dic['nid'] 
-            item['goods_url'] = data_info_dic['detail_url'] 
-            item['category_id'] = data_info_dic['category']
-            item['shop_id'] = data_info_dic['user_id'] 
-            item['shop_master'] = data_info_dic['nick'] 
-            item['comment_count'] = data_info_dic['comment_count'] 
-            item['sale'] = data_info_dic['view_sales'] 
-            item['shop_url'] = data_info_dic['shopLink'] 
-            item['price'] = data_info_dic['view_price'] 
-            item['local'] = data_info_dic['item_loc']
-            item['category'] = category
-
-            # 根据商品id 获取问答对
-            yield scrapy.Request('http://tmp', callback=self.parse_ask, meta={'item':item, 'ask':True})
-
-        # 对 now_cat_id 翻页
-        for page in range(1, 100):
-            next_page_url = 'https://s.taobao.com/search?data-key=s&data-value=%s&ajax=true&cat=%s&sort=sale-desc'\
-                               % (page * 44, now_cat_id)
-            yield scrapy.Request(next_page_url, callback=self.parse_page,  meta={'category':category})
-
-
-    def parse_page(self, response):
-        '''
-        解析翻页
-        '''
-        item = TaobaoAskAroundItem()
-        category = response.meta['category']
-        result = json.loads(response.body)
         data_info_list = result['mods']['itemlist']['data']['auctions']
         for data_info_dic in data_info_list:
             item['goods_name'] = data_info_dic['title']
@@ -91,10 +52,32 @@ class Ask(scrapy.Spider):
             item['price'] = data_info_dic['view_price']
             item['local'] = data_info_dic['item_loc']
             item['category'] = category
+            # 根据商品id 获取问答对 在中间件生成url
+            yield scrapy.Request('http://tmp', callback=self.parse_ask, meta={'item':item, 'ask':True}, dont_filter=True)
+        # 略过翻页的response
+        if not :
+            # 当前response的cat_id
+            now_cat_id = re.findall(r'data-value=(\d+)', response.url)[0]
+            # 对 now_cat_id 翻页
+            for page in range(1, 100):
+                next_page_url = 'https://s.taobao.com/search?data-key=s&data-value=%s&ajax=true&cat=%s&sort=sale-desc' % (page * 44, now_cat_id)
+                yield scrapy.Request(next_page_url, callback=self.parse,  meta={'category':category,'next_page':1})
 
-            # 根据商品id 获取问答对
-            yield scrapy.Request('http://tmp', callback=self.parse_ask, meta={'item':item, 'ask':True})
- 
+            # 找到下一级cat_id 
+            if data_list:
+                sub_category_list= data_list[0]['sub']
+                for sub_category_dic in sub_category_list:
+                    name = sub_category_dic['text']
+                    cat_id = sub_category_dic['value']
+                    # 增加类别 key 递增一个
+                    category[category.keys()[-1] + 1] = name
+                    url = 'https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % cat_id 
+                    # 爬取新cat_id首页
+                    yield scrapy.Request(url, callback=self.parse, meta={'category':category})
+
+
+
+
     def parse_ask(self, response):
         pass
 
