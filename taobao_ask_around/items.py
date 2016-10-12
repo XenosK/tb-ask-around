@@ -13,6 +13,7 @@ class TaobaoAskAroundItem(scrapy.Item):
     goods_id = scrapy.Field()
     goods_url = scrapy.Field()
     category_id = scrapy.Field()
+    category_name = scrapy.Field()
     shop_id = scrapy.Field()
     shop_master = scrapy.Field()
     comment_count = scrapy.Field()
@@ -20,7 +21,7 @@ class TaobaoAskAroundItem(scrapy.Item):
     shop_url = scrapy.Field()
     price = scrapy.Field()
     local = scrapy.Field()
-    
+    category = scrapy.Field()
     
     
      
