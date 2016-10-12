@@ -55,10 +55,8 @@ class Ask(scrapy.Spider):
             # 根据商品id 获取问答对 在中间件生成url
             yield scrapy.Request('http://tmp', callback=self.parse_ask, meta={'item':item, 'ask':True}, dont_filter=True)
         # 略过翻页的response
-        if not :
-            # 当前response的cat_id
-            now_cat_id = re.findall(r'data-value=(\d+)', response.url)[0]
-            # 对 now_cat_id 翻页
+        if not next_sign:
+            # 对 now_cat_id 翻100页
             for page in range(1, 100):
                 next_page_url = 'https://s.taobao.com/search?data-key=s&data-value=%s&ajax=true&cat=%s&sort=sale-desc' % (page * 44, now_cat_id)
                 yield scrapy.Request(next_page_url, callback=self.parse,  meta={'category':category,'next_page':1})
