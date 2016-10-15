@@ -41,7 +41,7 @@ DOWNLOAD_DELAY = 3
 # Override the default request headers:
 DEFAULT_REQUEST_HEADERS = {
    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-   'Accept-Language': 'cn-ZH',
+   'Accept-Language': 'ch-ZN',
 }
 
 # Enable or disable spider middlewares
@@ -52,9 +52,11 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'taobao_ask_around.middlewares.MyCustomDownloaderMiddleware': 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+    'taobao_ask_around.addcookie.AddCookieMiddleware': 998,
+#    'taobao_ask_around.addcookie.TestReq': 1,
+#    'taobao_ask_around.addcookie.TestReq1': 999
+}
 
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html

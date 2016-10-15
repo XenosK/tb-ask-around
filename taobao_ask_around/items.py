@@ -22,6 +22,7 @@ class TaobaoAskAroundItem(scrapy.Item):
     price = scrapy.Field()
     local = scrapy.Field()
     category = scrapy.Field()
+    ask_around_list = scrapy.Field()
     
     
      
