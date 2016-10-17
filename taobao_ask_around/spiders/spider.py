@@ -22,7 +22,7 @@ class Ask(scrapy.Spider):
             result = json.loads(response.body)
         except:
             logger.error('[parse] json load response failed')
-        # 翻页标记
+        # 获取response页数 
         now_page = response.meta.get('next_page')
         # 当前response的cat_id
         if not now_page:
@@ -31,14 +31,11 @@ class Ask(scrapy.Spider):
         else:
              now_cat_id = re.findall(r'cat=(\d+)', response.url)[0]
              logger.info('[parse] [cat_id: %s] is next' % now_cat_id)
-        '''
-        判断类别等级，解析类别名称
-        没有category 只能是start_urls经过
-        '''
+        #获取分类信息
         category = response.meta.get('category', {})
-        # 在 cat_id 的为最顶级1
         if not category:
             try:
+                # 没有分类信息的为start_urls的response
                 category_level = '1'
                 category_name = cat_dic[now_cat_id]
                 category[category_level] = category_name
@@ -64,8 +61,7 @@ class Ask(scrapy.Spider):
                 item['goods_url'] = data_info_dic['detail_url']
                 item['category_id'] = data_info_dic['category']
                 item['shop_id'] = data_info_dic['user_id']
-                item['shop_master'] = data_info_dic['nick']
-                
+                item['shop_master'] = data_info_dic['nick']                
                 item['comment_count'] = comment_count
                 item['sale'] = data_info_dic['view_sales']
                 item['shop_url'] = data_info_dic['shopLink']
@@ -90,12 +86,12 @@ class Ask(scrapy.Spider):
             logger.error('[parse] parse pager info failed')
         # 对当前商品搜索 翻页
         logger.info('[parse] [cat_id: %s] get next  page' % now_cat_id)
-        #0 是第一页 44是第二页
+        # 防止request堆积太多 cookie失效 只翻一页
         if now_page < page_count:
             next_page = now_page + 1
-#        for page in range(1, page_count):
             next_page_url = 'https://s.taobao.com/search?data-key=s&data-value=%s&ajax=true&cat=%s&sort=sale-desc' % (next_page * page_size, now_cat_id)
             yield scrapy.Request(next_page_url, callback=self.parse,  meta={'category':category,'next_page':next_page})
+        # 未翻页的response
         if next_page == 0:
             # 找到下一级cat_id
             data_list = result['mods']['nav']['data'].get('common') 
@@ -106,7 +102,7 @@ class Ask(scrapy.Spider):
                     name = sub_category_dic['text']
                     cat_id = sub_category_dic['value']
                     new_category = category.copy()
-                    # 增加类别 key 递增一个   有问题
+                    # 将提取出的类别加入category中
                     new_category[str(int(category.keys()[-1]) + 1)] = name
                     url = 'https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % cat_id 
                     # 爬取新cat_id首页
@@ -114,9 +110,6 @@ class Ask(scrapy.Spider):
 
 
     def parse_ask(self, response):
-        '''
-        判断数据存在 翻页 
-        '''
         logger.info('[parse_ask]')
         item = response.meta['item']
         goods_id = item['goods_id']
@@ -130,7 +123,7 @@ class Ask(scrapy.Spider):
         question_count = question_data['questCount']
         logger.info('[parse_ask] get question count: %s [goods_id:%s]' % (question_count, goods_id))
         question_cards = question_data.get('cards', None)
-        # 防止request堆积太多导致cookie失效  一个一个发request
+        # 防止request堆积太多导致cookie失效 翻一页 
         if page < int(question_count) / 10.0 :
             page += 1
             logger.info('[parse_ask] [id:%s] [page:%s]' % (goods_id, page))
