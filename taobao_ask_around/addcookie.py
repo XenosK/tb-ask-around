@@ -8,6 +8,8 @@ import urllib2
 import re
 
 logger = logging.getLogger(__name__)
+fh = logging.FileHandler('cookielog')
+logger.addHandler(fh)
 
 class AddCookieMiddleware(object):
 
@@ -23,7 +25,7 @@ class AddCookieMiddleware(object):
         self.first = True
         self.cookie = ''
         self.cookie = ''
-        self.url = 'https://api.m.taobao.com/h5/mtop.taobao.ocean.quest.list.pc/1.0/?appKey=12574478&t=%s&sign=%s&api=mtop.taobao.ocean.quest.list.pc&v=1.0&type=jsonp&dataType=jsonp&callback=mtopjsonp1&data=%s'
+        self.url = 'https://api.m.taobao.com/h5/mtop.taobao.ocean.quest.list.pc/1.0/?appKey=12574478&t=%s&sign=%s&api=mtop.taobao.ocean.quest.list.pc&v=1.0&type=jsonp&dataType=jsonp&data=%s'
 
     def process_request(self, request, spider):
         # 找到问答相关request, 并过滤掉已经生成url的request
@@ -52,7 +54,7 @@ class AddCookieMiddleware(object):
                 logger.error('[request] create url failed, reprocess the request')
                 return request
             logger.debug('[request] [id:%s] create url' % goods_id)
-            new_request = request.replace(url=url, cookies={'_m_h5_tk': self.cookie, '_m_h5_tk_enc':self.cookie1})
+            new_request = request.replace(url=url, cookies={'_m_h5_tk': self.cookie, '_m_h5_tk_enc':self.cookie1}, dont_filter=False)
             new_request.meta['my_filter'] = True
             self.cookie_use_times += 1
             return new_request
@@ -101,7 +103,9 @@ class AddCookieMiddleware(object):
         return re.findall(r'_m_h5_tk_enc=(.*?);', cookie)[0]
 
     def get_cookie(self):
-        logger.info('[get_cookie] first start up, get the cookie')
+        if self.first:
+            logger.info('[get_cookie] first start up, get the cookie')
+        logger.info('[get_cookie] get the cookie')
         url = 'https://api.m.taobao.com/h5/mtop.taobao.ocean.quest.list.pc/1.0/?appKey=12574478&t=147645292563&sign=50f374892cc03c718a4798db720f85c3&api=mtop.taobao.ocean.quest.list.pc'
         try:
             response = urllib2.urlopen(url)
