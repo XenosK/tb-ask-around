@@ -1,0 +1,8 @@
+*.pyc
+askid
+blooom
+crawls/
+cookielog
+log
+nohup.out
+
