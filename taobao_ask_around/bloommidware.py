@@ -9,6 +9,9 @@ from pybloom import ScalableBloomFilter
 
 
 logger = logging.getLogger('BloomMiddleware')
+fh = logging.FileHandler('bloomlog')
+logger.addHandler(fh)
+
 
 
 class BloomMiddleware(object):
@@ -50,7 +53,6 @@ class BloomMiddleware(object):
         atexit.register(self.write_to_disk)          
         
     def process_request(self, request, spider):
-        url = request.url
         #对有 Bloom 标记的 url 进行判重
         if request.meta.get('Bloom'):
             #如果 url 在 bloomfilter 中则丢弃这个 request
@@ -62,7 +64,8 @@ class BloomMiddleware(object):
                 logger.info(self.count)
                 raise IgnoreRequest
             else:
-         #       self.bloomfilter.add(tid)
+                logger.debug('[id:%s]not in bloom file' % tid)
+                self.bloomfilter.add(tid)
                 return None
         #定时将 bloomfilter 写入到磁盘
         if time.time() - self.last_write_time > self.write_time:

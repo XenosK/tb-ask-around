@@ -85,14 +85,14 @@ class Ask(scrapy.Spider):
             page_count = 1
             logger.error('[parse] parse pager info failed')
         # 对当前商品搜索 翻页
-        logger.info('[parse] [cat_id: %s] get next  page' % now_cat_id)
         # 防止request堆积太多 cookie失效 只翻一页
         if now_page < page_count:
             next_page = now_page + 1
+            logger.info('[parse] [cat_id: %s] get next [page:%s]' % (now_cat_id, next_page))
             next_page_url = 'https://s.taobao.com/search?data-key=s&data-value=%s&ajax=true&cat=%s&sort=sale-desc' % (next_page * page_size, now_cat_id)
             yield scrapy.Request(next_page_url, callback=self.parse,  meta={'category':category,'next_page':next_page})
         # 未翻页的response
-        if next_page == 0:
+        if now_page == 0 and len(category) < 2:
             # 找到下一级cat_id
             data_list = result['mods']['nav']['data'].get('common') 
             if data_list:

@@ -30,6 +30,9 @@ class AddCookieMiddleware(object):
     def process_request(self, request, spider):
         # 找到问答相关request, 并过滤掉已经生成url的request
         if request.meta.get('ask') and not request.meta.get('my_filter'):
+            # 去除过滤标记
+            request.meta.pop('Bloom', None)
+#            logger.info( request.meta)
             # 首次经过中间件 请求cookie
             if self.first:
                 self.get_cookie()

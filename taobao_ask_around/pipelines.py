@@ -10,9 +10,9 @@ from pymongo import MongoClient
 class TaobaoAskAroundPipeline(object):
 
     def __init__(self):
-        client = MongoClient('192.168.1.249', 27017)
-        db = client.zzzzz
-        self.collection = db.ask_r_20161014
+        client = MongoClient('192.168.1.234', 27017)
+        db = client.Taobao
+        self.collection = db.ask_r_20161018
 
     def process_item(self, item, spider):
         self.collection.insert(dict(item))
