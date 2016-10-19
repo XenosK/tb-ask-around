@@ -26,10 +26,18 @@ class AddCookieMiddleware(object):
         self.cookie = ''
         self.cookie = ''
         self.url = 'https://api.m.taobao.com/h5/mtop.taobao.ocean.quest.list.pc/1.0/?appKey=12574478&t=%s&sign=%s&api=mtop.taobao.ocean.quest.list.pc&v=1.0&type=jsonp&dataType=jsonp&data=%s'
-
+        self.parse = False 
+        self.parse_count = 0
+        
     def process_request(self, request, spider):
         # 找到问答相关request, 并过滤掉已经生成url的request
-        if request.meta.get('ask') and not request.meta.get('my_filter'):
+        if request.meta.get('ask') and not request.meta.get('my_filter') or self.parse:
+            if not request.meta.get('ask'):
+                return
+            self.parse_count += 1
+            if self.parse_count > 34000:
+                self.parse = False
+         #   logger.info('parse_count:%s'%self.parse_count)
             # 去除过滤标记
             request.meta.pop('Bloom', None)
 #            logger.info( request.meta)
@@ -59,15 +67,17 @@ class AddCookieMiddleware(object):
             logger.debug('[request] [id:%s] create url' % goods_id)
             new_request = request.replace(url=url, cookies={'_m_h5_tk': self.cookie, '_m_h5_tk_enc':self.cookie1}, dont_filter=False)
             new_request.meta['my_filter'] = True
-            self.cookie_use_times += 1
+#            self.cookie_use_times += 1
             return new_request
 
     def process_response(self, request, response, spider):
         if request.meta.get('ask'):
             #请求不成功
             retcode = response.headers['M-Retcode'] 
-            if retcode != 'SUCCESS': 
-                logger.warn('[%s] get response faild' % retcode)
+            if retcode != 'SUCCESS':
+                self.parse = True
+                self.parse_count = 0
+                logger.warn('[%s] get response faild id:%s' % (retcode, request.meta['item']['goods_id']))
                 logger.info('reset the cookies')
                 '''
                 出错要不要重置cookie？
@@ -79,7 +89,9 @@ class AddCookieMiddleware(object):
                 self.cookie = parse_cookie(cookie_list[0])
                 self.cookie1 = parse_cookie1(cookie_list[1])
                 '''
-                return request 
+                request.meta['my_filter'] = False
+                return request
+   #     self.parse = False
         return response
 
     def create_url(self, data, cookie):

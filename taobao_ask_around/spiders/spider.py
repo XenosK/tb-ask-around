@@ -10,12 +10,26 @@ logger = logging.getLogger(__name__)
 fh = logging.FileHandler('log')
 logger.addHandler(fh)
 
-cat_dic = {'50102996':u'女装','16':u'女装/女士精品','50008165':u'童装/婴儿装/亲子装','1705':u'饰品/流行首饰/时尚饰品','50340020':u'流行女鞋','1625':u'女士内衣/男士内衣/家居服','50006843':u'女鞋','50344007':u'流行男装','30':u'男装','50006842':u'女包','50067081':u'孕妇装/孕产妇用品/营养','50010404':u'服饰配件/皮带/帽子/围巾','50016756':u'运动服/休闲服','50016853':u'男鞋/皮鞋/休闲鞋','50010388':u'运动鞋','50468016':u'运动鞋/休闲鞋','50072688':u'功能箱包','54164002':u'童鞋/婴儿鞋/亲子>鞋','50482014':u'运动服/休闲服装','50072686':u'男包','50484015':u'运动包/户外包/配件'}
+#cat_dic = {'50102996':u'女装','16':u'女装/女士精品','50008165':u'童装/婴儿装/亲子装','1705':u'饰品/流行首饰/时尚饰品','50340020':u'流行女鞋','1625':u'女士内衣/男士内衣/家居服','50006843':u'女鞋','50344007':u'流行男装','30':u'男装','50006842':u'女包','50067081':u'孕妇装/孕产妇用品/营养','50010404':u'服饰配件/皮带/帽子/围巾','50016756':u'运动服/休闲服','50016853':u'男鞋/皮鞋/休闲鞋','50010388':u'运动鞋','50468016':u'运动鞋/休闲鞋','50072688':u'功能箱包','54164002':u'童鞋/婴儿鞋/亲子>鞋','50482014':u'运动服/休闲服装','50072686':u'男包','50484015':u'运动包/户外包/配件'}
 
+# 分类id和名称
+f = open('category').read()
+# 商品分类id
+f1 = open('cat_id').read()
+# 通过分类id 找到分类名称
+cat_list = json.loads(f)
+cat_id_list = f1.split('\n')[:-1]
 
 class Ask(scrapy.Spider):
     name = 'ask'
-    start_urls = ['https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % x for x in cat_dic]
+    start_urls = ['https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % x for x in cat_id_list]
+    
+    def create_category(self, cat_id):
+        for cat_dic in cat_list:
+            if cat_id in cat_dic['sub']:
+                return {'1':cat_dic['main'][1], '2': cat_dic['sub'][cat_id]}
+            if cat_id in cat_dic['main']:
+                 return {'1':cat_dic['main'][1]}
 
     def parse(self, response):
         try:
@@ -31,17 +45,15 @@ class Ask(scrapy.Spider):
         else:
              now_cat_id = re.findall(r'cat=(\d+)', response.url)[0]
              logger.info('[parse] [cat_id: %s] is next' % now_cat_id)
+
         #获取分类信息
-        category = response.meta.get('category', {})
+        category = response.meta.get('category')
         if not category:
             try:
-                # 没有分类信息的为start_urls的response
-                category_level = '1'
-                category_name = cat_dic[now_cat_id]
-                category[category_level] = category_name
+                category = self.create_category(now_cat_id)
             except: 
                 logger.info('[parse] set category failed')
-                category = {'1':''}
+                
         # 解析商品数据
         try:
             data_info_list = result['mods']['itemlist']['data']['auctions']
@@ -53,6 +65,7 @@ class Ask(scrapy.Spider):
             item = TaobaoAskAroundItem()
             try:
                 comment_count = data_info_dic['comment_count']
+                # 评论太少 可能没有问答信息
                 if int(comment_count) < 20:
                     logger.debug('comment less %s' % comment_count)
                     continue
@@ -71,10 +84,10 @@ class Ask(scrapy.Spider):
             except:
                 logger.info('[parse] [cat_id: %s] fill the item faild, continue' % now_cat_id)
                 continue
-            # 根据商品id 获取问答对 在中间件生成url
+            # 根据商品id, 在addcookie中间件生成问答信息request
             logger.debug('[parse] [goods_id:%s] create request' % item['goods_id'])
-            yield scrapy.Request('http://tmp', callback=self.parse_ask, meta={'item':item, 'ask':True, 'Bloom':True}, dont_filter=True)
-        # 略过翻页的response
+            yield scrapy.Request('http://tmp', callback=self.parse_ask, meta={'item':item, 'ask':True, 'Bloom':True, 'page':1}, dont_filter=True)
+       
         if not now_page:
             now_page = 0
         try:
@@ -86,34 +99,20 @@ class Ask(scrapy.Spider):
             logger.error('[parse] parse pager info failed')
         # 对当前商品搜索 翻页
         # 防止request堆积太多 cookie失效 只翻一页
+        if not now_page:
+            now_page = 0
         if now_page < page_count:
             next_page = now_page + 1
             logger.info('[parse] [cat_id: %s] get next [page:%s]' % (now_cat_id, next_page))
             next_page_url = 'https://s.taobao.com/search?data-key=s&data-value=%s&ajax=true&cat=%s&sort=sale-desc' % (next_page * page_size, now_cat_id)
             yield scrapy.Request(next_page_url, callback=self.parse,  meta={'category':category,'next_page':next_page})
-        # 未翻页的response
-        if now_page == 0 and len(category) < 2:
-            # 找到下一级cat_id
-            data_list = result['mods']['nav']['data'].get('common') 
-            if data_list:
-                logger.info('[parse] [cat_id: %s] get the sub cat id' % now_cat_id)
-                sub_category_list= data_list[0]['sub']
-                for sub_category_dic in sub_category_list:
-                    name = sub_category_dic['text']
-                    cat_id = sub_category_dic['value']
-                    new_category = category.copy()
-                    # 将提取出的类别加入category中
-                    new_category[str(int(category.keys()[-1]) + 1)] = name
-                    url = 'https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % cat_id 
-                    # 爬取新cat_id首页
-                    yield scrapy.Request(url, callback=self.parse, meta={'category':new_category})
 
 
     def parse_ask(self, response):
         logger.info('[parse_ask]')
         item = response.meta['item']
         goods_id = item['goods_id']
-        page = response.meta.get('page', 1)
+        page = response.meta.get('page')
         try:
             result = json.loads(response.body[9:-1])
         except:
