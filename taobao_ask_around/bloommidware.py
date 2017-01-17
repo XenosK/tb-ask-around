@@ -2,6 +2,7 @@
 from scrapy.conf import settings
 from scrapy.exceptions import IgnoreRequest
 
+import os
 import atexit
 import logging
 import time
@@ -17,23 +18,28 @@ logger.addHandler(fh)
 class BloomMiddleware(object):
 
     logger.info('Creating Bloomfilter')
-    
+   
+    # 没有bloomfile 默认生成 bloom文件
     try:
-        bloom_file = open(settings['BLOOM_FILE'], 'rb')
+        bloom_path = os.path.abspath(settings['BLOOM_FILE'])
+        bloom_file = open(bloom_path, 'rb')
+        # 不是tofile生成的文件会出错     
+        bloomfilter = ScalableBloomFilter.fromfile(bloom_file)
     except:
-        raise Exception('BLOOM_FILE ERROR')
-        
+        logger.warn('No Bloom File')
+        bloom_file = open('bloom', 'wb')
+        bloomfilter = ScalableBloomFilter(mode=ScalableBloomFilter.LARGE_SET_GROWTH)
+        bloom_path = os.path.abspath('./bloom')
     if settings['URL_FILE']:
+        # 读url
         try:
             url_file = open(settings['URL_FILE'], 'r')
         except:
-            raise Exception('URL_FILE ERROR')
-        bloomfilter = ScalableBloomFilter(mode=ScalableBloomFilter.SMALL_SET_GROWTH)
+            raise Exception('URL FILE ERROR')
+        bloomfilter = ScalableBloomFilter(mode=ScalableBloomFilter.LARGE_SET_GROWTH)
         for x in url_file.read().split('\n'):
             bloomfilter.add(x)
         url_file.close()
-    else: 
-        bloomfilter = ScalableBloomFilter.fromfile(bloom_file)
     
     bloom_file.close()
     
@@ -75,7 +81,7 @@ class BloomMiddleware(object):
         
     def write_to_disk(self):
         logger.info('WRITE TO DISK')
-        save_file = open(settings['BLOOM_FILE'], 'wb')
+        save_file = open(self.bloom_path, 'wb')
         self.bloomfilter.tofile(save_file)
         save_file.close()
         logger.info('WRITE COMPLETE')
