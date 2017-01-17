@@ -24,8 +24,9 @@ class AddCookieMiddleware(object):
         self.cookie_use_times = 0
         self.first = True
         self.cookie = ''
-        self.cookie = ''
         self.url = 'https://api.m.taobao.com/h5/mtop.taobao.ocean.quest.list.pc/1.0/?appKey=12574478&t=%s&sign=%s&api=mtop.taobao.ocean.quest.list.pc&v=1.0&type=jsonp&dataType=jsonp&data=%s'
+        # 防止cookie大面积失效 一般用不到这个参数
+        # 有一个request失效 后面的request可能都已失效 所以parse=True时全部重新生成request
         self.parse = False 
         self.parse_count = 0
         
@@ -35,12 +36,11 @@ class AddCookieMiddleware(object):
             if not request.meta.get('ask'):
                 return
             self.parse_count += 1
+            # 阈值 重新生成多少request后停止
             if self.parse_count > 34000:
                 self.parse = False
-         #   logger.info('parse_count:%s'%self.parse_count)
             # 去除过滤标记
             request.meta.pop('Bloom', None)
-#            logger.info( request.meta)
             # 首次经过中间件 请求cookie
             if self.first:
                 self.get_cookie()
@@ -67,7 +67,7 @@ class AddCookieMiddleware(object):
             logger.debug('[request] [id:%s] create url' % goods_id)
             new_request = request.replace(url=url, cookies={'_m_h5_tk': self.cookie, '_m_h5_tk_enc':self.cookie1}, dont_filter=False)
             new_request.meta['my_filter'] = True
-#            self.cookie_use_times += 1
+            self.cookie_use_times += 1
             return new_request
 
     def process_response(self, request, response, spider):

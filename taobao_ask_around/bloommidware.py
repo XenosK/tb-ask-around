@@ -47,23 +47,23 @@ class BloomMiddleware(object):
     
    
     def __init__(self):
-        #上次写入磁盘的时间点
+        # 上次写入磁盘的时间点
         self.last_write_time = time.time()
-        #写入磁盘的时间间隔(s)
+        # 写入磁盘的时间间隔(s)
         self.count = 0
         if not isinstance(settings['BLOOM_WRITE_TIME'], int):
             self.write_time = 300
         else:
             self.write_time = settings['BLOOM_WRITE_TIME']
-        #在结束时将 bloomfilter 内容写入到磁盘
+        # +1s 在爬虫结束时将 bloomfilter 内容写入到磁盘
         atexit.register(self.write_to_disk)          
         
     def process_request(self, request, spider):
-        #对有 Bloom 标记的 url 进行判重
+        # 对有 Bloom 标记的 url 进行判重
         if request.meta.get('Bloom'):
-            #如果 url 在 bloomfilter 中则丢弃这个 request
+            # 如果 url 在 bloomfilter 中则丢弃这个 request
             tid= request.meta['item']['goods_id']
-            #否则将 url 添加到 bloomfilter
+            # 否则将 url 添加到 bloomfilter
             if tid in self.bloomfilter:
                 self.count += 1
                 logger.info('IGNORE Request [goods_id:%s] ' % tid)
@@ -73,7 +73,7 @@ class BloomMiddleware(object):
                 logger.debug('[id:%s]not in bloom file' % tid)
                 self.bloomfilter.add(tid)
                 return None
-        #定时将 bloomfilter 写入到磁盘
+        # 定时将 bloomfilter 写入到磁盘
         if time.time() - self.last_write_time > self.write_time:
             self.last_write_time = time.time()
             self.write_to_disk()
