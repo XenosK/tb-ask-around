@@ -52,8 +52,7 @@ https://g.alicdn.com/??mtb/lib-promise/3.0.1/polyfillB.js,mtb/lib-mtop/2.0.8/mto
 
  
 ## request
-由于 sign 有时间限制，所以获取商品信息时，每次只生成一次下一页，获取评论时，也只请求一次下一页，控制request数量。
+由于 sign 有时间限制，所以获取商品信息时，每次请求只生成一次下一页，获取评论时，也只请求一次下一页，控制request数量，防止request过期失效。
 
-## 爬取过程
 
 

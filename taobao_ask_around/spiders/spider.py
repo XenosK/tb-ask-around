@@ -10,26 +10,21 @@ logger = logging.getLogger(__name__)
 fh = logging.FileHandler('log')
 logger.addHandler(fh)
 
-#cat_dic = {'50102996':u'女装','16':u'女装/女士精品','50008165':u'童装/婴儿装/亲子装','1705':u'饰品/流行首饰/时尚饰品','50340020':u'流行女鞋','1625':u'女士内衣/男士内衣/家居服','50006843':u'女鞋','50344007':u'流行男装','30':u'男装','50006842':u'女包','50067081':u'孕妇装/孕产妇用品/营养','50010404':u'服饰配件/皮带/帽子/围巾','50016756':u'运动服/休闲服','50016853':u'男鞋/皮鞋/休闲鞋','50010388':u'运动鞋','50468016':u'运动鞋/休闲鞋','50072688':u'功能箱包','54164002':u'童鞋/婴儿鞋/亲子>鞋','50482014':u'运动服/休闲服装','50072686':u'男包','50484015':u'运动包/户外包/配件'}
-
-# 分类id和名称
-f = open('category').read()
-# 商品分类id
-f1 = open('cat_id').read()
-# 通过分类id 找到分类名称
-cat_list = json.loads(f)
-cat_id_list = f1.split('\n')[:-1]
 
 class Ask(scrapy.Spider):
     name = 'ask'
+    # 这里的cat_id_list就是要爬取商品类别的cat_id列表 cat_id获取方式见README
     start_urls = ['https://s.taobao.com/search?data-key=cat&data-value=%s&ajax=true&sort=sale-desc' % x for x in cat_id_list]
     
+    '''
+    查找分类用
     def create_category(self, cat_id):
         for cat_dic in cat_list:
             if cat_id in cat_dic['sub']:
                 return {'1':cat_dic['main'][1], '2': cat_dic['sub'][cat_id]}
             if cat_id in cat_dic['main']:
                  return {'1':cat_dic['main'][1]}
+    '''
 
     def parse(self, response):
         try:
@@ -130,25 +125,6 @@ class Ask(scrapy.Spider):
     
         if question_cards:
             logger.info('[parse_ask] [id:%s] get question cards success' % goods_id)
-            '''
-            ask_around_list =[
-                {question:xx,
-                 ask_time:xx,
-                 topic_id:xx,
-                 answer_list:[
-                     {answer_time:x,
-                      answer_feed:x,
-                      answer_user:{x},
-                      answer_vip:x,
-                      answer:x},
-                      ...,
-                     {tmp_dic},
-                 ]
-                },
-                ...,
-                {ask_around_dic},
-            ]
-            '''
             ask_around_list = []
             for aq_dic in question_cards:
                 ask_around_dic={}
@@ -171,10 +147,4 @@ class Ask(scrapy.Spider):
             yield item
                 
 
-                
-            
-            
-
-
-        
                 
