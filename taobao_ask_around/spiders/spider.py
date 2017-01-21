@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 fh = logging.FileHandler('log')
 logger.addHandler(fh)
 
+# 可以用这个测试
+# cat_id_list = ['50344007']
 
 class Ask(scrapy.Spider):
     name = 'ask'
