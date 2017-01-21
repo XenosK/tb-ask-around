@@ -51,7 +51,7 @@ class AddCookieMiddleware(object):
             item = request.meta['item']
             goods_id = item['goods_id']
             logger.debug('[request] [id:%s] get ask_around request' % goods_id)
-            #翻页的加上 "cursor":"页数"
+            # 翻页的加上 "cursor":"页数"
             page = request.meta.get('page')
             if page:
                 data = '{"itemId":"%s","cursor":"%s"}' % (item['goods_id'], page)
@@ -72,7 +72,7 @@ class AddCookieMiddleware(object):
 
     def process_response(self, request, response, spider):
         if request.meta.get('ask'):
-            #请求不成功
+            # 请求不成功
             retcode = response.headers['M-Retcode'] 
             if retcode != 'SUCCESS':
                 self.parse = True
@@ -80,7 +80,7 @@ class AddCookieMiddleware(object):
                 logger.warn('[%s] get response faild id:%s' % (retcode, request.meta['item']['goods_id']))
                 logger.info('reset the cookies')
                 '''
-                出错要不要重置cookie？
+                出错要不要重置cookie？ 策略问题
                 cookie_list = response.headers.getlist('Set-cookie')
                 if len(cookie_list) != 2:
                     logger.warn('get cookie failed, use [get_cookie]')
@@ -91,7 +91,7 @@ class AddCookieMiddleware(object):
                 '''
                 request.meta['my_filter'] = False
                 return request
-   #     self.parse = False
+        # self.parse = False
         return response
 
     def create_url(self, data, cookie):
